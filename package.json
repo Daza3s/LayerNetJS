@@ -1,0 +1,16 @@
+{
+  "type": "module",
+  "name": "layernetjs",
+  "version": "1.0.0",
+  "main": "test.js",
+  "scripts": {
+    "start": "node ./test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "mnist": "^1.1.0"
+  }
+}
