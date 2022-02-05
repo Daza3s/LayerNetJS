@@ -1,34 +1,17 @@
 import { Matrix } from "./netzwerk/Matrix.js";
 
-let matrix = new Matrix(5,5*5);
-matrix.randomize();
+let mPacked = new Matrix(4,5*5);
+let fPacked = new Matrix(4,3*3);
 
-let filter = new Matrix(5,3*3);
-filter.init(0.5);
+mPacked.packed(5,5);
+fPacked.packed(3,3);
 
-let mList = [];
-let fList = [];
-let eList = [];
+mPacked.init(1);
+fPacked.init(.5);
 
-let e = new Matrix(3,3);
-e.init();
+/**FIX PADDING AND STRIDE */
+let pErg = mPacked.convKernel(fPacked, 1, 1);
 
-for(let i = 0;i < matrix.iDim;i++) {
-    mList.push(new Matrix(5,5));
-    mList[i].werte = matrix.werte.slice(i*matrix.jDim, (i+1)*matrix.jDim);
-    
-    fList.push(new Matrix(3,3));
-    fList[i].werte = filter.werte.slice(i*filter.jDim, (i+1)*filter.jDim);
+console.log(pErg);
 
-    eList.push(mList[i].conv(fList[i]));
-    
-    e.werte = e.werte.map((x,index)=> {
-        let ergebnis = x + eList[i].werte[index];
-        return ergebnis;
-    })
-}
-
-console.log("");
-
-console.log(matrix.convKernel(filter).werte);
-console.log(e.werte);
+/**FIX NON SQUARE CONVOLUTION */

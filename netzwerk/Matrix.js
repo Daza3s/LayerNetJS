@@ -11,6 +11,17 @@ class Matrix {
         this.jDim = jDim;
     }
 
+    /**
+     * Specifies the array is packed
+     * @param {number} i 
+     * @param {number} j 
+     */
+    packed(i, j) {
+        this.packedI = i;
+        this.packedJ = j;
+        this.packed = true;
+    }
+
     init(wert = 0) {
         for(let index = 0;index < this.werte.length;index++) {
             this.werte[index] = wert;
@@ -31,7 +42,22 @@ class Matrix {
     }
 
     at(i,j, unbounded = false) {
-        return this.werte[i * this.jDim + j] ?? (unbounded ? 0 : undefined);
+        if(unbounded) {
+            if(i < 0 || j < 0 || i >= this.iDim || j >= this.jDim) return 0;
+        }
+        return this.werte[i * this.jDim + j];
+    }
+
+    /**
+     * Checks padding for packed matrixes
+     * @param {number} i 
+     * @param {number} j 
+     * @param {number} k 
+     * @returns number
+     */
+    atPacked(i,j,k) {
+        if(!this.inBoundPacked(i,j,k)) return 0;
+        return this.at(i,j+k);
     }
 
     set(i, j, wert) {
@@ -296,6 +322,21 @@ class Matrix {
     }
 
     /**
+     * 
+     * @param {number} Channel 
+     * @param {number} I
+     * @param {number} J 
+     * @returns {boolean} in Packed bound?
+     */
+    inBoundPacked(i,j,k) {
+        if(i < 0 || j < 0 || k < 0) return false;
+        if(i >= this.iDim || !Number.isInteger(j/this.packedI) || j/this.packedI >= this.packedI || k >= this.packedJ) {
+            return false;
+        } 
+        return true;
+    }
+
+    /**
      * Sums over i Dimension
      * @returns {Matrix}
      */
@@ -320,36 +361,44 @@ class Matrix {
     }
 
     kasten3DSum(i, j, filter, unbounded = false) {
-        let erg = [];
-        let d1I, d1J = Math.sqrt(this.jDim);
-        for(let index = 0;index < this.iDim;index++) {
-            let arr = filter.werte.map((x,fIndex)=> {
-                let offSet = fIndex % filter.iDim;
-                return x * this.at(index, (j + offSet) + (fIndex - offSet + i) * d1J, unbounded);
-            });
-            let sum = arr.reduce((a,b)=> a+b);
-            erg.push(sum);
-        }
-        return erg.reduce((a,b)=> a+b);
+        let d1J = Math.sqrt(this.jDim);
+        
+        let arr = filter.werte.map((x,fIndex)=> {
+            let extractedJ = fIndex % filter.jDim;                                              //Gets the j value of the filter or more precicly the 3D Kernel which is the flattend index of the 2D Filter 
+                                                                                                //(eg starts with 0 then 1 then 2 etc. till max Math.sqrt(filter.jDim))
+
+            let jOffSet = extractedJ % filter.packedI;                                            //Calculates the offSet which is equal to the current j Index of the filter
+            let flatJ = (j + jOffSet);                                                          //Calculates the target j of the flat Image (justs adds the specified start j)
+            let flatI = (extractedJ - jOffSet) / filter.packedI * d1J + i * d1J;                  //Calculates the target i of the flat Image:
+                                                                                                //extractedJ - offSet  / fSize => scaled flat Filter i down into single step (eg in a 3x3 filter: 0->0->0-->1->1->1-->2->2->2)
+                                                                                                //* d1J => scales up to flat Image i (eg in 5x5 Image: 0->->0-->5->->5-->10->->10-->15->->15...)
+            
+            return x * this.atPacked( Math.floor(fIndex/filter.jDim)  , flatI , flatJ);         //Multiplies filter at fIndex with own at slected channel and Index (flatJ + flatI) and passes on unbounded which curr doesnt work couse it paddes the channels
+        });
+
+        let erg = arr.reduce((a,b)=> a+b);
+        
+        return erg;
     }
     /**
-     * TODO: FIX
-     * @param {*} filter 
-     * @param {*} stride 
-     * @param {*} padding 
+     * Convulates MultiChannel Imageses with a Kernel (Only supports square Images and Kernels Currently) Kernel/Image strukture has to be Matrix(Channels, width*height) where width = height and width = Integer
+     * @param {Matrix} filter 
+     * @param {number} stride 
+     * @param {number} padding 
      * @returns 
      */
     convKernel(filter, stride = 1, padding = 0) {
         //--
-        let filterI, filterJ, ownI, ownJ;
         filterI = filterJ = Math.sqrt(filter.jDim);
         ownI = ownJ = Math.sqrt(this.jDim);
 
-        let ergI = (ownI + 2*padding - filterI) / stride + 1;
-        let ergJ = (ownJ + 2*padding - filterJ) / stride + 1;
+        let ergI = (this.packedI + 2*padding - filter.packedI) / stride + 1;
+        let ergJ = (this.packedJ + 2*padding - filter.packedJ) / stride + 1;
+
 
         let erg = new Matrix(1, ergI*ergJ);
         //loop over i and j of pic
+        /**FIX LOOP TO GO OVER OWN DIMS TO BYPASS PADDING / STRIDE PROBLEMS */
         for(let i = -padding;i < ergI+padding;i += stride) {
             for(let j = -padding;j < ergJ+padding;j += stride) {
                 let sum = this.kasten3DSum(i, j, filter, true);
