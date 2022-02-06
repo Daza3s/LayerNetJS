@@ -17,6 +17,7 @@ class Matrix {
      * @param {number} j 
      */
     packed(i, j) {
+        if(i*j !== this.jDim) throw new Error("Given packed dimension can't match actuall dimensions"); 
         this.packedI = i;
         this.packedJ = j;
         this.packed = true;
@@ -261,28 +262,21 @@ class Matrix {
     }
 
     /**
-     * 
+     * Returns convultion over self with specified filter
      * @param {Matrix} filter 
      * @param {number} stride 
      * @param {number} padding
      * @returns {Matrix} 
      */
     conv(filter, stride = 1, padding = 0) {
-        let ergI = (this.iDim + 2*padding - filter.iDim) / stride + 1;
-        let ergJ = (this.jDim + 2*padding - filter.jDim) / stride + 1;
+        let ergI = Math.floor((this.iDim + 2*padding - filter.iDim) / stride + 1);
+        let ergJ = Math.floor((this.jDim + 2*padding - filter.jDim) / stride + 1);
         let erg = new Matrix( ergI , ergJ );
 
-        for(let i = 0 - padding;i < ergI + padding;i++) {
-            for(let j = 0 - padding;j < ergJ + padding;j++) {
-                let e_ij = 0;
-
-                for(let filterI = 0;filterI < filter.iDim;filterI++) {
-                    for(let filterJ = 0;filterJ < filter.jDim;filterJ++) {
-                        e_ij += filter.at(filterI,filterJ, true) * this.at(filterI + i*stride, filterJ + j*stride, true);
-                    }
-                }
-
-                erg.set(i,j, e_ij);
+        for(let i = 0;i < ergI;i++) {
+            for(let j = 0;j < ergJ;j++) {
+                let e_ij = this.kasten(i*stride - padding,j*stride - padding,filter);
+                erg.setSafe(i,j, e_ij.sum());
             }
         }
 
@@ -355,7 +349,7 @@ class Matrix {
         let erg = new Matrix(filter.iDim, filter.jDim);
         erg.werte = filter.werte.map((x,index)=> {
             let offSet = index % filter.iDim;
-            return x * this.at(i + (index-offSet)/filter.iDim, j + offSet);
+            return x * this.at(i + (index-offSet)/filter.iDim, j + offSet, true);
         });
         return erg;
     }
@@ -389,9 +383,6 @@ class Matrix {
      */
     convKernel(filter, stride = 1, padding = 0) {
         //--
-        filterI = filterJ = Math.sqrt(filter.jDim);
-        ownI = ownJ = Math.sqrt(this.jDim);
-
         let ergI = (this.packedI + 2*padding - filter.packedI) / stride + 1;
         let ergJ = (this.packedJ + 2*padding - filter.packedJ) / stride + 1;
 
@@ -399,9 +390,9 @@ class Matrix {
         let erg = new Matrix(1, ergI*ergJ);
         //loop over i and j of pic
         /**FIX LOOP TO GO OVER OWN DIMS TO BYPASS PADDING / STRIDE PROBLEMS */
-        for(let i = -padding;i < ergI+padding;i += stride) {
-            for(let j = -padding;j < ergJ+padding;j += stride) {
-                let sum = this.kasten3DSum(i, j, filter, true);
+        for(let i = 0;i < ergI;i++) {
+            for(let j = 0;j < ergJ;j++) {
+                let sum = this.kasten3DSum(i*stride + padding, j*stride + padding, filter, true);
                 erg.werte[i * ergJ + j] = sum;
             }
         }
