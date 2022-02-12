@@ -49,20 +49,19 @@ class Layer {
             this.options.padding = options.padding || 0;
             this.options.stride = options.stride || 1;
 
-            this.filter = [];
+            this.kernels = [];
             this.biases = [];
             this.channels = this.options.channels;
             this.iDim = (previousLayer.iDim + 2*this.options.padding - this.options.size) / this.options.stride + 1;
             this.jDim = (previousLayer.jDim + 2*this.options.padding - this.options.size) / this.options.stride + 1;
 
             for(let i = 0;i < this.options.channels;i++) {
-                this.filter.push([]);
-                this.biases.push([]);
-                for(let j = 0;j < this.previous.channels;j++) {
-                    this.filter[i].push(new Matrix(this.options.size, this.options.size));
-                    this.filter[i][j].randomize();
-                    this.biases[i].push(Math.random()*2-1);
-                }
+                this.filter.push(new Matrix(this.previous.channels,this.options.size**2));
+                this.filter[i].packed(this.options.size,this.options.size);
+                this.filter[i].randomize();
+
+                this.biases.push(new Matrix(this.previous.channels, 1));
+                this.biases[i].randomize();
             }
             
         }else if(this.type === "dens") {

@@ -5,44 +5,37 @@ import { Matrix } from "./Matrix.js";
  */
 
 let convForward = function(input) {
-    let erg = [];
+    let erg = new Matrix(this.channels,this.iDim*this.jDim);
+    erg.packed(this.iDim,this.jDim);
+
+    erg.werte = [];
 
     for(let i = 0;i < this.filter.length;i++) {
-        erg.push(new Matrix(this.iDim, this.jDim));
-        erg[i].init();
-        for(let j = 0;j < this.filter[i].length;j++) {
-            let zwischenErg = input[j].conv(this.filter[i][j], this.options.stride, this.options.padding ); //might be input[i] instead but unlickely
-            zwischenErg = zwischenErg.add(this.biases[i][j]);
-            zwischenErg = this.actFunc(zwischenErg);
-            erg[i] = erg[i].add(zwischenErg);
-        }
-        
+        let filterConv = input.convKernel(this.filter[i], this.options.stride, this.options.padding);
+        filterConv.add(this.biases[i].sum());
+        filterConv = this.actFunc(filterConv);
+        erg.werte.push(...filterConv.werte);
     }
 
     return erg;
 }
 
 let convPropagate = function(input) {
-    let erg = [];
-    this.net = [];
+    let erg = new Matrix(this.channels,this.iDim*this.jDim);
+    this.net = new Matrix(this.channels,this.iDim*this.jDim);
+
+    erg.packed(this.iDim,this.jDim);
+    this.net.packed(this.iDim,this.jDim);
+
+    erg.werte = [];
+    this.net.werte = [];
 
     for(let i = 0;i < this.filter.length;i++) {
-        erg.push(new Matrix(this.iDim, this.jDim));
-        erg[i].init();
-
-        this.net.push(new Matrix(this.iDim, this.jDim));
-        this.net[i].init();
-
-        for(let j = 0;j < this.filter[i].length;j++) {
-            let zwischenErg = input[j].conv(this.filter[i][j], this.options.stride, this.options.padding ); //might be input[i] instead but unlickely
-            zwischenErg = zwischenErg.add(this.biases[i][j]);
-
-            this.net[i] = this.net[i].add(zwischenErg);
-            
-            zwischenErg = this.actFunc(zwischenErg);
-            erg[i] = erg[i].add(zwischenErg);
-        }
-        
+        let filterConv = input.convKernel(this.filter[i], this.options.stride, this.options.padding);
+        filterConv.add(this.biases[i].sum());
+        this.net.werte.push(...filterConv.werte);
+        filterConv = this.actFunc(filterConv);
+        erg.werte.push(...filterConv.werte);
     }
 
     this.out = erg;

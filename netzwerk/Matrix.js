@@ -388,11 +388,12 @@ class Matrix {
 
 
         let erg = new Matrix(1, ergI*ergJ);
+        erg.packed(ergI,ergJ);
         //loop over i and j of pic
         /**FIX LOOP TO GO OVER OWN DIMS TO BYPASS PADDING / STRIDE PROBLEMS */
         for(let i = 0;i < ergI;i++) {
             for(let j = 0;j < ergJ;j++) {
-                let sum = this.kasten3DSum(i*stride + padding, j*stride + padding, filter, true);
+                let sum = this.kasten3DSum(i*stride - padding, j*stride - padding, filter, true);
                 erg.werte[i * ergJ + j] = sum;
             }
         }
