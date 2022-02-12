@@ -155,6 +155,69 @@ class Visualisierer {
         }
         ctx.stroke();
     }
+
+    trainSetShowCMD(input, target, opts, rounds) {
+        process.stdout.write('\x1B[?25l');
+        let roundIndex = 0;
+        let error = 0;
+        while(roundIndex < rounds) {
+            roundIndex++;
+            let eSum = 0;
+            for(let i = 0;i < input.length;i++) {
+                let e = this.network.train(input[i], target[i], opts);
+                eSum += e;
+            }
+            eSum /= input.length;
+            error += eSum;
+            this.writeProgressLine(roundIndex, rounds);
+        }
+        process.stdout.write('\x1B[?25h');
+        return error/roundIndex;
+    }
+
+    sleep(time) { return new Promise((r) => setTimeout(r,time)) }
+    /**
+     * Clears line and writes message
+     * @param {number} curr Value
+     * @param {number} max Value
+     */
+    writeProgressLine(curr, max) {
+        
+        let scalar = 20;
+
+        let oCurr = curr;
+        let oMax = max;
+
+        if(max !== scalar) {
+            let scale = scalar/max;
+            max *= scale;
+            curr *= scale;
+            max = Math.floor(max);
+            curr = Math.floor(curr);
+        }
+
+        function resetLine() {
+            //process.stdout.clearLine();
+            process.stdout.cursorTo(0); 
+        }
+        
+        let string = "";
+        for(let i = 0;i < max;i++) {
+            if(i < curr) {
+                string += "=";
+            }else {
+                string += ".";
+            }
+        }
+        string += ">| ";
+        string += oCurr + " from " + oMax;
+
+        resetLine();
+
+        process.stdout.write(string);
+    }
+
+    
 }
 
 export { Visualisierer };
